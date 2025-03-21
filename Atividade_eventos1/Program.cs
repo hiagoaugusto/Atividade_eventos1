@@ -1,27 +1,44 @@
+using Atividade_eventos1.Models;
+using Microsoft.EntityFrameworkCore;
+
+
+
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Host.UseDefaultServiceProvider(options =>
+
+{
+
+    options.ValidateScopes = false; // Ativa a validação de escopo. False evita erro de BD inexistente
+
+});
+
 // Add services to the container.
+
 builder.Services.AddControllersWithViews();
 
-var app = builder.Build();
+//Configuração da Entity Framework Core
 
-// Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
+builder.Services.AddDbContext<Context>(options =>
+
+options.UseSqlServer(builder.Configuration["Data:Atividade_eventos1:ConnectionString"],
+
+//evita que o BD não seja criado por problemas de timeout com o servidor
+
+sqlServerOptionsAction: sqlOptions =>
+
 {
-    app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
-}
 
-app.UseHttpsRedirection();
-app.UseStaticFiles();
+    sqlOptions.EnableRetryOnFailure(
 
-app.UseRouting();
+    maxRetryCount: 10,
 
-app.UseAuthorization();
+    maxRetryDelay: TimeSpan.FromSeconds(30),
 
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
+    errorNumbersToAdd: null);
 
-app.Run();
+}));
+
+var app = builder.Build();//mantenha o restante do código após esta linha
+
+SeedData.EnsurePopulated(app);
